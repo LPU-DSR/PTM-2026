@@ -1,6 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+/* Phone performance mode: flip on a lightweight class the instant the page
+   loads on any touch device, so the GPU-heavy 3D scene and blurred orbs are
+   never painted. Runs before CSS/DOM so there's no flash of the heavy version. */
+(function(){
+  try {
+    var touch = ('ontouchstart' in window) ||
+                (navigator.maxTouchPoints > 0) ||
+                window.matchMedia('(pointer: coarse)').matches;
+    if (touch) document.documentElement.className += ' lite';
+  } catch(e){}
+})();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1152,6 +1165,43 @@ body {
   .hero-inner { padding: 42px 20px 48px; }
 }
 
+
+/* ═════════ PHONE PERFORMANCE MODE ═════════
+   Touch devices get a clean, flat background instead of five
+   animated 70px-blur orbs + a live WebGL scene. Everything
+   functional stays; only the GPU-melting decoration is dropped. */
+html.lite #hero-3d,
+html.lite .hero-hint,
+html.lite .ambient,
+html.lite .hero-orb { display: none !important; }
+
+html.lite .blob { display: none !important; }
+
+html.lite .hero {
+  /* keep the warm gradient, just no moving blurred orbs on top */
+  background:
+    radial-gradient(700px 360px at 82% -20%, rgba(244,128,31,.30), transparent 60%),
+    linear-gradient(160deg, var(--ink) 0%, var(--ink-2) 100%);
+}
+
+html.lite .progress-shell {
+  /* backdrop-filter is recomputed every scroll frame — very costly
+     on mobile. Swap it for a solid translucent fill. */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: rgba(251,246,238,.97);
+}
+
+/* trim the remaining decorative blurs that still cost on mobile */
+html.lite .modal-overlay,
+html.lite .cam-overlay,
+html.lite .success-overlay {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: rgba(16,22,32,.72);
+}
+html.lite .success-overlay { background: rgba(251,246,238,.97); }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; }
   .section { opacity: 1; transform: none; }
@@ -2120,7 +2170,7 @@ var TOUCH = ('ontouchstart' in window);
    THREE.JS HERO — interactive 3D emoji objects
    ═══════════════════════════════════════════════ */
 (function initHero3D() {
-  if (REDUCED || typeof THREE === 'undefined') return;
+  if (REDUCED || TOUCH || typeof THREE === 'undefined') return;   // phones: skip WebGL entirely
   var hero = document.getElementById('hero');
   var mount = document.getElementById('hero-3d');
   if (!hero || !mount) return;
